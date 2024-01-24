@@ -11,6 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UpsertUserDetailDTO {
     private Long id;
+    private Long userId;
     private String firstName;
     private String lastName;
 }

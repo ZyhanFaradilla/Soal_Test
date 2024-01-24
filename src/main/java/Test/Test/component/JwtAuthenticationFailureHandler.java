@@ -1,5 +1,6 @@
 package Test.Test.component;
 
+import Test.Test.dto.Token.ResponseFailLoginDTO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,7 +16,8 @@ public class JwtAuthenticationFailureHandler implements AuthenticationFailureHan
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.getWriter().write("Unauthorized");
+        ResponseFailLoginDTO fail = new ResponseFailLoginDTO(false, "Unauthorized");
+        response.getWriter().print("Status: " + fail.getStatus() +"\n" + "message: " + fail.getMessage());
         response.getWriter().flush();
     }
 }

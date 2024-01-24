@@ -30,7 +30,7 @@ public class JwtManager {
         builder = builder.setSubject(subject)
                 .setAudience(audience)
                 .claim("username", username)
-                .setIssuer("http://localhost:7070")
+                .setIssuer("http://localhost:7000")
                 .setIssuedAt(getIssueDate())
 //               .setExpiration(getExpiredDate())
                 .signWith(SignatureAlgorithm.HS256, secretKey);

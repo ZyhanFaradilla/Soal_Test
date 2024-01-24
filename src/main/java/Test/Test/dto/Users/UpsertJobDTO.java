@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class UpsertJobDTO {
     private Long id;
+    private Long userId;
     private String name;
     private LocalDate startAt;
     private LocalDate endAt;

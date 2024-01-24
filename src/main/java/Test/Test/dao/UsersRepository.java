@@ -23,4 +23,10 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
             """)
     public List<UserDataDetailDTO> getAllUser();
 
+    @Query("""
+            SELECT COUNT(us.id)
+            FROM Users AS us
+            WHERE us.username = :username
+            """)
+    public Integer countExistUsername(@Param("username") String username);
 }

@@ -21,7 +21,7 @@ import Test.Test.service.UsersService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.ui.Model;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,6 +49,9 @@ public class AccountRestController {
     @Autowired
     private UsersService usersService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private String username = "";
 
     @PostMapping("/register")
@@ -63,7 +66,7 @@ public class AccountRestController {
             InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Succesfully Created Data", createdDto);
             return ResponseEntity.status(200).body(response);
         }
-        return ResponseEntity.status(422).body(bindingResult.getAllErrors());
+        return ResponseEntity.status(422).body(bindingResult.getAllErrors().get(0).getDefaultMessage());
     }
 
     @PostMapping("/authenticate")
@@ -87,8 +90,18 @@ public class AccountRestController {
 
     @PutMapping("/update")
     public ResponseEntity<Object> put(@Valid @RequestBody RegisterDTO dto, BindingResult bindingResult){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         if(!bindingResult.hasErrors()){
-            var user = accountService.register(dto);
+            var user = usersRepository.findById(dto.getId()).get();
+            if(user.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("Data Sudah Terhapus");
+            }
+            user.setUsername(dto.getUsername());
+            var hashPassword = passwordEncoder.encode(dto.getPassword());
+            user.setPassword(hashPassword);
             user.setUpdateBy(usersRepository.getIdUser(username));
             user.setUpdateAt(LocalDateTime.now());
             usersRepository.save(user);
@@ -100,26 +113,35 @@ public class AccountRestController {
             InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Succesfully Updated Data", updateDataDTO);
             return ResponseEntity.status(200).body(response);
         }
-        return ResponseEntity.status(422).body(bindingResult.getAllErrors());
+        return ResponseEntity.status(422).body(bindingResult.getAllErrors().get(0).getDefaultMessage());
     }
 
     @DeleteMapping("/deleteUser/{id}")
     public ResponseEntity<Object> deleteUser(@PathVariable("id") Long id){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         var user = usersRepository.findById(id).get();
         user.setDeleteBy(usersRepository.getIdUser(username));
         user.setDeleteAt(LocalDateTime.now());
-        usersRepository.save(user);
         DeleteDataDTO deleteDataDTO = new DeleteDataDTO();
         deleteDataDTO.setPk(user.getId());
-        deleteDataDTO.setDeleted_by(usersRepository.getIdUser(username));
+        Long idUser = usersRepository.getIdUser(username);
+        deleteDataDTO.setDeleted_by(idUser);
         deleteDataDTO.setEntity(user.getClass().getSimpleName());
         deleteDataDTO.setDeleted_at(LocalDateTime.now());
         InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Succesfully Delete Data", deleteDataDTO);
+        usersRepository.save(user);
         return ResponseEntity.status(200).body(response);
     }
 
     @GetMapping()
     public ResponseEntity<Object> get(){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         var id = usersRepository.getIdUser(username);
         var response = accountService.getAccountDetail(id);
         return ResponseEntity.status(200).body(response);
@@ -127,9 +149,16 @@ public class AccountRestController {
 
     @PostMapping("/insertDetailUser")
     public ResponseEntity<Object> post(@Valid @RequestBody UpsertUserDetailDTO dto, BindingResult bindingResult){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         if(!bindingResult.hasErrors()){
             var userDetail = usersService.saveDetailUser(dto);
-            userDetail.setUserId(usersRepository.getIdUser(username));
+            if(dto.getUserId() == usersRepository.getIdUser(username)){
+                return ResponseEntity.status(200).body("User Id sudah tersedia dalam database");
+            }
+            userDetail.setUserId(dto.getUserId());
             userDetail.setCreatedBy(usersRepository.getIdUser(username));
             userDetail.setCreatedAt(LocalDateTime.now());
             detailUsersRepository.save(userDetail);
@@ -146,10 +175,14 @@ public class AccountRestController {
 
     @PutMapping("/updateDetailUser")
     public ResponseEntity<Object> put(@Valid @RequestBody UpsertUserDetailDTO dto, BindingResult bindingResult){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         if(!bindingResult.hasErrors()){
             var userDetail = detailUsersRepository.findById(dto.getId()).get();
             userDetail.setId(dto.getId());
-            userDetail.setUserId(usersRepository.getIdUser(username));
+            userDetail.setUserId(dto.getUserId());
             userDetail.setFirstName(dto.getFirstName());
             userDetail.setLastName(dto.getLastName());
             userDetail.setUpdateBy(usersRepository.getIdUser(username));
@@ -168,24 +201,32 @@ public class AccountRestController {
 
     @DeleteMapping("/deleteDetailUser/{id}")
     public ResponseEntity<Object> deleteDetailUser(@PathVariable("id") Long id){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         var userDetail = detailUsersRepository.findById(id).get();
         userDetail.setDeleteBy(usersRepository.getIdUser(username));
         userDetail.setDeleteAt(LocalDateTime.now());
-        detailUsersRepository.save(userDetail);
         DeleteDataDTO deleteDataDTO = new DeleteDataDTO();
         deleteDataDTO.setPk(userDetail.getId());
         deleteDataDTO.setDeleted_by(usersRepository.getIdUser(username));
         deleteDataDTO.setEntity(userDetail.getClass().getSimpleName());
         deleteDataDTO.setDeleted_at(LocalDateTime.now());
         InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Succesfully Delete Data", deleteDataDTO);
+        detailUsersRepository.save(userDetail);
         return ResponseEntity.status(200).body(response);
     }
 
     @PostMapping("/insertJobUser")
     public ResponseEntity<Object> post(@Valid @RequestBody UpsertJobDTO dto, BindingResult bindingResult){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         if(!bindingResult.hasErrors()){
             var jobUser = usersService.saveJobUser(dto);
-            jobUser.setUserId(usersRepository.getIdUser(username));
+            jobUser.setUserId(dto.getUserId());
             jobUser.setCreatedBy(usersRepository.getIdUser(username));
             jobUser.setCreatedAt(LocalDateTime.now());
             jobsRepository.save(jobUser);
@@ -202,10 +243,14 @@ public class AccountRestController {
 
     @PutMapping("/updateJobUser")
     public ResponseEntity<Object> put(@Valid @RequestBody UpsertJobDTO dto, BindingResult bindingResult){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         if(!bindingResult.hasErrors()){
             var jobUser = jobsRepository.findById(dto.getId()).get();
             jobUser.setId(dto.getId());
-            jobUser.setUserId(usersRepository.getIdUser(username));
+            jobUser.setUserId(dto.getUserId());
             jobUser.setName(dto.getName());
             jobUser.setStartAt(dto.getStartAt());
             jobUser.setEndAt(dto.getEndAt());
@@ -225,16 +270,20 @@ public class AccountRestController {
 
     @DeleteMapping("/deleteJobUser/{id}")
     public ResponseEntity<Object> deleteJobUser(@PathVariable("id") Long id){
+        if(username.equals("")){
+            var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
+            return ResponseEntity.status(401).body(failResponse);
+        }
         var jobUser = jobsRepository.findById(id).get();
         jobUser.setDeleteBy(usersRepository.getIdUser(username));
         jobUser.setDeleteAt(LocalDateTime.now());
-        jobsRepository.save(jobUser);
         DeleteDataDTO deleteDataDTO = new DeleteDataDTO();
         deleteDataDTO.setPk(jobUser.getId());
         deleteDataDTO.setDeleted_by(usersRepository.getIdUser(username));
         deleteDataDTO.setEntity(jobUser.getClass().getSimpleName());
         deleteDataDTO.setDeleted_at(LocalDateTime.now());
         InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Succesfully Delete Data", deleteDataDTO);
+        jobsRepository.save(jobUser);
         return ResponseEntity.status(200).body(response);
     }
 }

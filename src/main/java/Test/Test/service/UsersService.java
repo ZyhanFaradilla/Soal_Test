@@ -3,7 +3,6 @@ package Test.Test.service;
 import Test.Test.dao.DetailUsersRepository;
 import Test.Test.dao.JobsRepository;
 import Test.Test.dao.UsersRepository;
-import Test.Test.dto.DetailUserDTO;
 import Test.Test.dto.Users.*;
 import Test.Test.entity.DetailUsers;
 import Test.Test.entity.Jobs;
@@ -55,7 +54,6 @@ public class UsersService {
 
     public DetailUsers saveDetailUser(UpsertUserDetailDTO dto){
         DetailUsers entity = new DetailUsers();
-        entity.setId(dto.getId());
         entity.setFirstName(dto.getFirstName());
         entity.setLastName(dto.getLastName());
         return entity;
@@ -63,7 +61,6 @@ public class UsersService {
 
     public Jobs saveJobUser(UpsertJobDTO dto){
         Jobs entity = new Jobs();
-        entity.setId(dto.getId());
         entity.setName(dto.getName());
         entity.setStartAt(dto.getStartAt());
         entity.setEndAt(dto.getEndAt());

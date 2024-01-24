@@ -31,9 +31,10 @@ public class AccountService implements UserDetailsService{
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    private String username = "";
+
     public Users register(RegisterDTO dto){
         var entity = new Users();
-        entity.setId(dto.getId());
         entity.setUsername(dto.getUsername());
         var hashPassword = passwordEncoder.encode(dto.getPassword());
         entity.setPassword(hashPassword);
@@ -62,6 +63,7 @@ public class AccountService implements UserDetailsService{
             if(entity != null){
                 var hashPassword = entity.getPassword();
                 isAuthenticated = passwordEncoder.matches(password, hashPassword);
+                this.username = username;
             }
             return isAuthenticated;
         } else {
@@ -82,5 +84,10 @@ public class AccountService implements UserDetailsService{
         dto.setStatus(true);
         dto.setData(userDataDTO);
         return dto;
+    }
+
+    public Boolean isUsernameExist(String username){
+        var totalUser = usersRepository.countExistUsername(username);
+        return (totalUser > 0);
     }
 }
