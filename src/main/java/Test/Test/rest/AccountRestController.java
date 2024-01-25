@@ -16,6 +16,8 @@ import Test.Test.dto.UpdateUser.InfoUpdateUserDTO;
 import Test.Test.dto.UpdateUser.UpdateDataDTO;
 import Test.Test.dto.Users.UpsertJobDTO;
 import Test.Test.dto.Users.UpsertUserDetailDTO;
+import Test.Test.entity.DetailUsers;
+import Test.Test.entity.Jobs;
 import Test.Test.service.AccountService;
 import Test.Test.service.UsersService;
 import jakarta.validation.Valid;
@@ -29,7 +31,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @CrossOrigin
-@RequestMapping("api/account")
+@RequestMapping("/api/account")
 public class AccountRestController {
     @Autowired
     private JwtManager jwtManager;
@@ -63,7 +65,7 @@ public class AccountRestController {
             createdDto.setCreated_by(user.getCreatedBy());
             createdDto.setEntity(user.getClass().getSimpleName());
             createdDto.setCreated_at(user.getCreatedAt());
-            InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Succesfully Created Data", createdDto);
+            InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Successfully Created Data", createdDto);
             return ResponseEntity.status(200).body(response);
         }
         return ResponseEntity.status(422).body(bindingResult.getAllErrors().get(0).getDefaultMessage());
@@ -79,7 +81,7 @@ public class AccountRestController {
                     dto.getAudience(),
                     dto.getSecretKey()
             );
-            var responseDto = new ResponseTokenDTO(true, "Succesfully Login", token, token);
+            var responseDto = new ResponseTokenDTO(true, "Successfully Login", token, token);
             username = dto.getUsername();
             return ResponseEntity.status(200).body(responseDto);
         } else {
@@ -104,35 +106,54 @@ public class AccountRestController {
             user.setPassword(hashPassword);
             user.setUpdateBy(usersRepository.getIdUser(username));
             user.setUpdateAt(LocalDateTime.now());
-            usersRepository.save(user);
             UpdateDataDTO updateDataDTO = new UpdateDataDTO();
             updateDataDTO.setPk(user.getId());
             updateDataDTO.setUpdated_by(usersRepository.getIdUser(username));
             updateDataDTO.setEntity(user.getClass().getSimpleName());
             updateDataDTO.setUpdated_at(LocalDateTime.now());
-            InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Succesfully Updated Data", updateDataDTO);
+            InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Successfully Updated Data", updateDataDTO);
+            usersRepository.save(user);
             return ResponseEntity.status(200).body(response);
         }
         return ResponseEntity.status(422).body(bindingResult.getAllErrors().get(0).getDefaultMessage());
     }
 
-    @DeleteMapping("/deleteUser/{id}")
+    @DeleteMapping("/delete/{id}")
     public ResponseEntity<Object> deleteUser(@PathVariable("id") Long id){
         if(username.equals("")){
             var failResponse = new ResponseFailLoginDTO(false, "Unauthorized");
             return ResponseEntity.status(401).body(failResponse);
         }
         var user = usersRepository.findById(id).get();
-        user.setDeleteBy(usersRepository.getIdUser(username));
+        if(user.getDeleteAt() != null){
+            return ResponseEntity.status(200).body("Data sudah terhapus");
+        }
+        Long userId = usersRepository.getIdUser(username);
+        user.setDeleteBy(userId);
         user.setDeleteAt(LocalDateTime.now());
         DeleteDataDTO deleteDataDTO = new DeleteDataDTO();
         deleteDataDTO.setPk(user.getId());
-        Long idUser = usersRepository.getIdUser(username);
-        deleteDataDTO.setDeleted_by(idUser);
+        deleteDataDTO.setDeleted_by(userId);
         deleteDataDTO.setEntity(user.getClass().getSimpleName());
         deleteDataDTO.setDeleted_at(LocalDateTime.now());
-        InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Succesfully Delete Data", deleteDataDTO);
+        InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Successfully Delete Data", deleteDataDTO);
         usersRepository.save(user);
+        var detailUsers = detailUsersRepository.findAll();
+        for(DetailUsers detaiUser : detailUsers){
+            if(detaiUser.getUserId() == id){
+                detaiUser.setDeleteBy(userId);
+                detaiUser.setDeleteAt(LocalDateTime.now());
+                detailUsersRepository.save(detaiUser);
+            }
+        }
+        var jobs = jobsRepository.findAll();
+        for(Jobs job : jobs){
+            if(job.getUserId() == id){
+                job.setDeleteBy(userId);
+                job.setDeleteAt(LocalDateTime.now());
+                jobsRepository.save(job);
+            }
+        }
         return ResponseEntity.status(200).body(response);
     }
 
@@ -154,21 +175,27 @@ public class AccountRestController {
             return ResponseEntity.status(401).body(failResponse);
         }
         if(!bindingResult.hasErrors()){
-            var userDetail = usersService.saveDetailUser(dto);
-            if(dto.getUserId() == usersRepository.getIdUser(username)){
-                return ResponseEntity.status(200).body("User Id sudah tersedia dalam database");
+            var user = usersRepository.findById(dto.getUserId()).get();
+            if(user.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("User sudah tidak ditemukan");
             }
-            userDetail.setUserId(dto.getUserId());
-            userDetail.setCreatedBy(usersRepository.getIdUser(username));
-            userDetail.setCreatedAt(LocalDateTime.now());
-            detailUsersRepository.save(userDetail);
-            CreatedDataDTO createdDto = new CreatedDataDTO();
-            createdDto.setPk(userDetail.getId());
-            createdDto.setCreated_by(userDetail.getCreatedBy());
-            createdDto.setEntity(userDetail.getClass().getSimpleName());
-            createdDto.setCreated_at(userDetail.getCreatedAt());
-            InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Succesfully Created Data", createdDto);
-            return ResponseEntity.status(200).body(response);
+            var userDetail = usersService.saveDetailUser(dto);
+            Long userId = detailUsersRepository.countDetailUserByUserId(dto.getUserId());
+            if(userId > 0){
+                return ResponseEntity.status(200).body("User Id sudah tersedia dalam database");
+            } else {
+                userDetail.setUserId(dto.getUserId());
+                userDetail.setCreatedBy(usersRepository.getIdUser(username));
+                userDetail.setCreatedAt(LocalDateTime.now());
+                detailUsersRepository.save(userDetail);
+                CreatedDataDTO createdDto = new CreatedDataDTO();
+                createdDto.setPk(userDetail.getId());
+                createdDto.setCreated_by(userDetail.getCreatedBy());
+                createdDto.setEntity(userDetail.getClass().getSimpleName());
+                createdDto.setCreated_at(userDetail.getCreatedAt());
+                InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Successfully Created Data", createdDto);
+                return ResponseEntity.status(200).body(response);
+            }
         }
         return ResponseEntity.status(422).body(bindingResult.getAllErrors());
     }
@@ -180,20 +207,27 @@ public class AccountRestController {
             return ResponseEntity.status(401).body(failResponse);
         }
         if(!bindingResult.hasErrors()){
+            var user = usersRepository.findById(dto.getUserId()).get();
+            if(user.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("Data sudah tidak ditemukan");
+            }
             var userDetail = detailUsersRepository.findById(dto.getId()).get();
+            if(userDetail.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("Data sudah terhapus tidak bisa di update");
+            }
             userDetail.setId(dto.getId());
             userDetail.setUserId(dto.getUserId());
             userDetail.setFirstName(dto.getFirstName());
             userDetail.setLastName(dto.getLastName());
             userDetail.setUpdateBy(usersRepository.getIdUser(username));
             userDetail.setUpdateAt(LocalDateTime.now());
-            detailUsersRepository.save(userDetail);
             UpdateDataDTO updateDataDTO = new UpdateDataDTO();
             updateDataDTO.setPk(userDetail.getId());
             updateDataDTO.setUpdated_by(usersRepository.getIdUser(username));
             updateDataDTO.setEntity(userDetail.getClass().getSimpleName());
             updateDataDTO.setUpdated_at(LocalDateTime.now());
-            InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Succesfully Updated Data", updateDataDTO);
+            InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Successfully Updated Data", updateDataDTO);
+            detailUsersRepository.save(userDetail);
             return ResponseEntity.status(200).body(response);
         }
         return ResponseEntity.status(422).body(bindingResult.getAllErrors());
@@ -206,6 +240,9 @@ public class AccountRestController {
             return ResponseEntity.status(401).body(failResponse);
         }
         var userDetail = detailUsersRepository.findById(id).get();
+        if(userDetail.getDeleteAt() != null){
+            return ResponseEntity.status(200).body("Data sudah terhapus");
+        }
         userDetail.setDeleteBy(usersRepository.getIdUser(username));
         userDetail.setDeleteAt(LocalDateTime.now());
         DeleteDataDTO deleteDataDTO = new DeleteDataDTO();
@@ -213,7 +250,7 @@ public class AccountRestController {
         deleteDataDTO.setDeleted_by(usersRepository.getIdUser(username));
         deleteDataDTO.setEntity(userDetail.getClass().getSimpleName());
         deleteDataDTO.setDeleted_at(LocalDateTime.now());
-        InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Succesfully Delete Data", deleteDataDTO);
+        InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Successfully Delete Data", deleteDataDTO);
         detailUsersRepository.save(userDetail);
         return ResponseEntity.status(200).body(response);
     }
@@ -225,6 +262,10 @@ public class AccountRestController {
             return ResponseEntity.status(401).body(failResponse);
         }
         if(!bindingResult.hasErrors()){
+            var user = usersRepository.findById(dto.getUserId()).get();
+            if(user.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("Data sudah tidak ditemukan");
+            }
             var jobUser = usersService.saveJobUser(dto);
             jobUser.setUserId(dto.getUserId());
             jobUser.setCreatedBy(usersRepository.getIdUser(username));
@@ -235,7 +276,7 @@ public class AccountRestController {
             createdDto.setCreated_by(jobUser.getCreatedBy());
             createdDto.setEntity(jobUser.getClass().getSimpleName());
             createdDto.setCreated_at(jobUser.getCreatedAt());
-            InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Succesfully Created Data", createdDto);
+            InfoCreatedUserDTO response = new InfoCreatedUserDTO(true, "Successfully Created Data", createdDto);
             return ResponseEntity.status(200).body(response);
         }
         return ResponseEntity.status(422).body(bindingResult.getAllErrors());
@@ -248,7 +289,14 @@ public class AccountRestController {
             return ResponseEntity.status(401).body(failResponse);
         }
         if(!bindingResult.hasErrors()){
+            var user = usersRepository.findById(dto.getUserId()).get();
+            if(user.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("Data sudah tidak ditemukan");
+            }
             var jobUser = jobsRepository.findById(dto.getId()).get();
+            if(jobUser.getDeleteAt() != null){
+                return ResponseEntity.status(200).body("Data sudah terhapus tidak bisa di update");
+            }
             jobUser.setId(dto.getId());
             jobUser.setUserId(dto.getUserId());
             jobUser.setName(dto.getName());
@@ -256,13 +304,13 @@ public class AccountRestController {
             jobUser.setEndAt(dto.getEndAt());
             jobUser.setUpdateBy(usersRepository.getIdUser(username));
             jobUser.setUpdateAt(LocalDateTime.now());
-            jobsRepository.save(jobUser);
             UpdateDataDTO updateDataDTO = new UpdateDataDTO();
             updateDataDTO.setPk(jobUser.getId());
             updateDataDTO.setUpdated_by(usersRepository.getIdUser(username));
             updateDataDTO.setEntity(jobUser.getClass().getSimpleName());
             updateDataDTO.setUpdated_at(LocalDateTime.now());
-            InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Succesfully Updated Data", updateDataDTO);
+            InfoUpdateUserDTO response = new InfoUpdateUserDTO(true, "Successfully Updated Data", updateDataDTO);
+            jobsRepository.save(jobUser);
             return ResponseEntity.status(200).body(response);
         }
         return ResponseEntity.status(422).body(bindingResult.getAllErrors());
@@ -275,6 +323,9 @@ public class AccountRestController {
             return ResponseEntity.status(401).body(failResponse);
         }
         var jobUser = jobsRepository.findById(id).get();
+        if(jobUser.getDeleteAt() != null){
+            return ResponseEntity.status(200).body("Data sudah terhapus");
+        }
         jobUser.setDeleteBy(usersRepository.getIdUser(username));
         jobUser.setDeleteAt(LocalDateTime.now());
         DeleteDataDTO deleteDataDTO = new DeleteDataDTO();
@@ -282,7 +333,7 @@ public class AccountRestController {
         deleteDataDTO.setDeleted_by(usersRepository.getIdUser(username));
         deleteDataDTO.setEntity(jobUser.getClass().getSimpleName());
         deleteDataDTO.setDeleted_at(LocalDateTime.now());
-        InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Succesfully Delete Data", deleteDataDTO);
+        InfoDeleteUserDTO response = new InfoDeleteUserDTO(true, "Successfully Delete Data", deleteDataDTO);
         jobsRepository.save(jobUser);
         return ResponseEntity.status(200).body(response);
     }

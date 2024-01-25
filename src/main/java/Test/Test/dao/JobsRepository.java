@@ -12,7 +12,7 @@ public interface JobsRepository extends JpaRepository<Jobs, Long> {
     @Query("""
             SELECT new Test.Test.dto.JobDTO(job.name, job.startAt, job.endAt)
             FROM Jobs AS job
-            WHERE job.userId = :userId
+            WHERE job.userId = :userId AND job.deleteAt IS NULL
             """)
     public List<JobDTO> getJob(@Param("userId") Long id);
 }

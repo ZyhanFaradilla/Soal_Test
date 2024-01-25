@@ -55,6 +55,13 @@ public class AccountService implements UserDetailsService{
         }
     }
 
+    public String getUsernameAccount(){
+        if(this.username.equals("")){
+            return "Anda belum login";
+        }
+        return this.username;
+    }
+
     public Boolean checkUsernamePassword(String username, String password){
         var isAuthenticated = false;
         Long id = usersRepository.getIdUser(username);

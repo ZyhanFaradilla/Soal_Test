@@ -10,7 +10,14 @@ public interface DetailUsersRepository extends JpaRepository<DetailUsers, Long> 
     @Query("""
             SELECT new Test.Test.dto.DetailUserDTO(usdet.firstName, usdet.lastName)
             FROM DetailUsers AS usdet
-            WHERE usdet.userId = :userId
+            WHERE usdet.userId = :userId AND usdet.deleteAt IS NULL
             """)
     public DetailUserDTO getUserDetail(@Param("userId") Long id);
+
+    @Query("""
+            SELECT COUNT(*)
+            FROM DetailUsers AS usdet
+            WHERE usdet.userId = :userId AND usdet.deleteAt IS NULL
+            """)
+    public Long countDetailUserByUserId(@Param("userId") Long userId);
 }

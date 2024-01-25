@@ -39,6 +39,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             var authentication = SecurityContextHolder.getContext().getAuthentication();
             if(username != null && authentication == null){
                 var userDetails = userDetailsService.loadUserByUsername(username);
+                //Jika menggunakn authorities maka harus terdapt role nya untuk mennetukan rolenya mneggunakn token jika tidak valid maka
+                //akan mengeluarkan token is invalid
                 var authenticationToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

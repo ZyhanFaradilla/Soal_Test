@@ -38,8 +38,8 @@ public class RestSecurityConfiguration {
                         jwtRequestFilter, UsernamePasswordAuthenticationFilter.class
                 ).httpBasic((entry) -> entry
                         .authenticationEntryPoint(authenticationEntryPoint())
-                ).exceptionHandling((exception) -> exception
-                        .accessDeniedHandler(accessDeniedHandler())
+//                ).exceptionHandling((exception) -> exception
+//                        .accessDeniedHandler(accessDeniedHandler())
                 );
         return httpSecurity.build();
     }

@@ -20,6 +20,7 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
             SELECT new Test.Test.dto.Users.UserDataDetailDTO(user.id, user.username, user.createdBy, 
             user.createdAt, user.updateBy, user.updateAt, user.deleteBy, user.deleteAt)
             FROM Users AS user
+            WHERE user.deleteAt IS NULL
             """)
     public List<UserDataDetailDTO> getAllUser();
 

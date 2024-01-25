@@ -33,11 +33,14 @@ public class UsersService {
         return dto;
     }
 
-    public InfoOneUserDetailDTO getOneUser(Long id){
+    public Object getOneUser(Long id){
         InfoOneUserDetailDTO dto = new InfoOneUserDetailDTO();
         UserDataDetailDTO userDto = new UserDataDetailDTO();
         dto.setStatus(true);
         Users user = usersRepository.findById(id).get();
+        if(user.getDeleteAt() != null){
+            return "User tidak dapat ditemukan";
+        }
         userDto.setId(id);
         userDto.setUsername(user.getUsername());
         userDto.setDetail(detailUsersRepository.getUserDetail(id));

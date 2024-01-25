@@ -10,7 +10,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class RequestTokenDTO {
-    private Long id;
     private String username;
     private String password;
     private String subject;
